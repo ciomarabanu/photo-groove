@@ -1,32 +1,61 @@
 module PhotoGroove exposing (main)
 
+import Array exposing (Array)
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 
 
+type alias UrlPrefix =
+    String
+
+
+urlPrefix : UrlPrefix
 urlPrefix =
     "http://elm-in-action.com/"
 
 
+view : Model -> Html OnClickMessage
 view model =
     div [ class "content" ]
         [ h1 [] [ text "Photo Groove" ]
         , div [ id "thumbnails" ] (List.map (viewThumbnail model.selectedThumbnail) model.thumbnails)
-        , img [ class "large", src (urlPrefix ++ "large/" ++ model.selectedThumbnail) ] []
+        , img [ class "large", src (urlPrefix ++ "large/" ++ model.selectedThumbnail.fileName) ] []
         ]
 
 
-viewThumbnail selectedThumbnail thumb =
+type alias Action =
+    String
+
+
+type alias OnClickMessage =
+    { action : Action, thumbnail : Thumbnail }
+
+
+viewThumbnail : Thumbnail -> Thumbnail -> Html OnClickMessage
+viewThumbnail selectedThumb thumb =
     img
         [ src (urlPrefix ++ thumb.fileName)
-        , classList [ ( "selected", selectedThumbnail == thumb.fileName ) ]
-        , onClick { action = constants.clickedThumbnailAction, thumbnail = thumb.fileName }
+        , classList [ ( "selected", selectedThumb == thumb ) ]
+        , onClick { action = actions.clickedThumbnailAction, thumbnail = thumb }
         ]
         []
 
 
+type alias FileName =
+    String
+
+
+type alias Thumbnail =
+    { fileName : FileName }
+
+
+type alias Model =
+    { thumbnails : List Thumbnail, selectedThumbnail : Thumbnail }
+
+
+initialModel : Model
 initialModel =
     { thumbnails =
         [ { fileName = "1.jpeg" }
@@ -34,19 +63,26 @@ initialModel =
         , { fileName = "3.jpeg" }
         ]
     , selectedThumbnail =
-        "1.jpeg"
+        { fileName = "1.jpeg" }
     }
 
 
+thumbnailArray : Array Thumbnail
+thumbnailArray =
+    Array.fromList initialModel.thumbnails
+
+
+update : OnClickMessage -> Model -> Model
 update msg model =
-    if msg.action == constants.clickedThumbnailAction then
+    if msg.action == actions.clickedThumbnailAction then
         { model | selectedThumbnail = msg.thumbnail }
 
     else
         model
 
 
-constants =
+actions : { clickedThumbnailAction : Action }
+actions =
     { clickedThumbnailAction = "wtf"
     }
 
