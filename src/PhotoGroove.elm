@@ -16,12 +16,16 @@ urlPrefix =
     "http://elm-in-action.com/"
 
 
-view : Model -> Html OnClickMessage
+view : Model -> Html Msg
 view model =
     div [ class "content" ]
         [ h1 [] [ text "Photo Groove" ]
-        , div [ id "thumbnails" ] (List.map (viewThumbnail model.selectedThumbnail) model.thumbnails)
+        , button
+            [ onClick ClickedSurpriseMe ]
+            [ text "Surprise Me!" ]
+        , div [ id "thumbnails", class (sizeToString model.chosenSize) ] (List.map (viewThumbnail model.selectedThumbnail) model.thumbnails)
         , img [ class "large", src (urlPrefix ++ "large/" ++ model.selectedThumbnail.fileName) ] []
+        , div [] (List.map (\size -> chooseImgSize size) [ Small, Medium, Large ])
         ]
 
 
@@ -29,18 +33,40 @@ type alias Action =
     String
 
 
-type alias OnClickMessage =
-    { action : Action, thumbnail : Thumbnail }
-
-
-viewThumbnail : Thumbnail -> Thumbnail -> Html OnClickMessage
+viewThumbnail : Thumbnail -> Thumbnail -> Html Msg
 viewThumbnail selectedThumb thumb =
     img
         [ src (urlPrefix ++ thumb.fileName)
         , classList [ ( "selected", selectedThumb == thumb ) ]
-        , onClick { action = actions.clickedThumbnailAction, thumbnail = thumb }
+        , onClick (ClickedThumbnail thumb)
         ]
         []
+
+
+chooseImgSize : ThumbnailSize -> Html Msg
+chooseImgSize size =
+    label []
+        [ input
+            [ type_ "radio"
+            , name "size"
+            , onClick (ChangeSize size)
+            ]
+            []
+        , text (sizeToString size)
+        ]
+
+
+sizeToString : ThumbnailSize -> String
+sizeToString size =
+    case size of
+        Small ->
+            "small"
+
+        Medium ->
+            "med"
+
+        Large ->
+            "large"
 
 
 type alias FileName =
@@ -52,7 +78,7 @@ type alias Thumbnail =
 
 
 type alias Model =
-    { thumbnails : List Thumbnail, selectedThumbnail : Thumbnail }
+    { thumbnails : List Thumbnail, selectedThumbnail : Thumbnail, chosenSize : ThumbnailSize }
 
 
 initialModel : Model
@@ -64,6 +90,7 @@ initialModel =
         ]
     , selectedThumbnail =
         { fileName = "1.jpeg" }
+    , chosenSize = Medium
     }
 
 
@@ -72,13 +99,29 @@ thumbnailArray =
     Array.fromList initialModel.thumbnails
 
 
-update : OnClickMessage -> Model -> Model
-update msg model =
-    if msg.action == actions.clickedThumbnailAction then
-        { model | selectedThumbnail = msg.thumbnail }
+type ThumbnailSize
+    = Small
+    | Medium
+    | Large
 
-    else
-        model
+
+type Msg
+    = ClickedSurpriseMe
+    | ClickedThumbnail Thumbnail
+    | ChangeSize ThumbnailSize
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        ClickedSurpriseMe ->
+            { model | selectedThumbnail = { fileName = "1.jpeg" } }
+
+        ClickedThumbnail thumb ->
+            { model | selectedThumbnail = thumb }
+
+        ChangeSize size ->
+            { model | chosenSize = size }
 
 
 actions : { clickedThumbnailAction : Action }
