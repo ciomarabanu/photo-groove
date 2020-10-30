@@ -1,10 +1,11 @@
-module PhotoGroove exposing (main)
+module PhotoGroove exposing (Msg, main)
 
 import Array exposing (Array)
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
+import Random
 
 
 type alias UrlPrefix =
@@ -31,6 +32,11 @@ view model =
 
 type alias Action =
     String
+
+
+randomPhotoPicker : Random.Generator Int
+randomPhotoPicker =
+    Random.int 0 (Array.length thumbnailArray - 1)
 
 
 viewThumbnail : Thumbnail -> Thumbnail -> Html Msg
@@ -109,19 +115,37 @@ type Msg
     = ClickedSurpriseMe
     | ClickedThumbnail Thumbnail
     | ChangeSize ThumbnailSize
+    | GotSelectedIndex Int
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ClickedSurpriseMe ->
-            { model | selectedThumbnail = { fileName = "1.jpeg" } }
+            ( model, Random.generate GotSelectedIndex randomPhotoPicker )
 
         ClickedThumbnail thumb ->
-            { model | selectedThumbnail = thumb }
+            ( { model | selectedThumbnail = thumb }, Cmd.none )
 
         ChangeSize size ->
-            { model | chosenSize = size }
+            ( { model | chosenSize = size }, Cmd.none )
+
+        GotSelectedIndex index ->
+            ( { model | selectedThumbnail = getThumbnail index model.selectedThumbnail }, Cmd.none )
+
+
+getThumbnail : Int -> Thumbnail -> Thumbnail
+getThumbnail index defaultThumbnail =
+    let
+        maybeThumbnail =
+            Array.get index thumbnailArray
+    in
+    case maybeThumbnail of
+        Just thumb ->
+            thumb
+
+        Nothing ->
+            defaultThumbnail
 
 
 actions : { clickedThumbnailAction : Action }
@@ -130,9 +154,11 @@ actions =
     }
 
 
+main : Program () Model Msg
 main =
-    Browser.sandbox
-        { init = initialModel
+    Browser.element
+        { init = \flags -> ( initialModel, Cmd.none )
         , view = view
         , update = update
+        , subscriptions = \model -> Sub.none
         }
