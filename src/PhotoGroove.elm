@@ -1,4 +1,4 @@
-module PhotoGroove exposing (Msg, main)
+module PhotoGroove exposing (main)
 
 import Array exposing (Array)
 import Browser
@@ -8,56 +8,50 @@ import Html.Events exposing (onClick)
 import Random
 
 
-type alias UrlPrefix =
-    String
-
-
-urlPrefix : UrlPrefix
+urlPrefix : String
 urlPrefix =
     "http://elm-in-action.com/"
+
+
+type Msg
+    = ClickedPhoto String
+    | GotSelectedIndex Int
+    | ClickedSize ThumbnailSize
+    | ClickedSurpriseMe
 
 
 view : Model -> Html Msg
 view model =
     div [ class "content" ]
         [ h1 [] [ text "Photo Groove" ]
-        , button
-            [ onClick ClickedSurpriseMe ]
-            [ text "Surprise Me!" ]
-        , div [ id "thumbnails", class (sizeToString model.chosenSize) ] (List.map (viewThumbnail model.selectedThumbnail) model.thumbnails)
-        , img [ class "large", src (urlPrefix ++ "large/" ++ model.selectedThumbnail.fileName) ] []
-        , div [] (List.map (\size -> chooseImgSize size) [ Small, Medium, Large ])
+        , button [ onClick ClickedSurpriseMe ] [ text "Surprise Me!" ]
+        , h3 [] [ text "Thumbnail Size:" ]
+        , div [ id "choose-size" ]
+            (List.map viewSizeChooser [ Small, Medium, Large ])
+        , div [ id "thumbnails", class (sizeToString model.chosenSize) ]
+            (List.map (viewThumbnail model.selectedUrl) model.photos)
+        , img
+            [ class "large"
+            , src (urlPrefix ++ "large/" ++ model.selectedUrl)
+            ]
+            []
         ]
 
 
-type alias Action =
-    String
-
-
-randomPhotoPicker : Random.Generator Int
-randomPhotoPicker =
-    Random.int 0 (Array.length thumbnailArray - 1)
-
-
-viewThumbnail : Thumbnail -> Thumbnail -> Html Msg
-viewThumbnail selectedThumb thumb =
+viewThumbnail : String -> Photo -> Html Msg
+viewThumbnail selectedUrl thumb =
     img
-        [ src (urlPrefix ++ thumb.fileName)
-        , classList [ ( "selected", selectedThumb == thumb ) ]
-        , onClick (ClickedThumbnail thumb)
+        [ src (urlPrefix ++ thumb.url)
+        , classList [ ( "selected", selectedUrl == thumb.url ) ]
+        , onClick (ClickedPhoto thumb.url)
         ]
         []
 
 
-chooseImgSize : ThumbnailSize -> Html Msg
-chooseImgSize size =
+viewSizeChooser : ThumbnailSize -> Html Msg
+viewSizeChooser size =
     label []
-        [ input
-            [ type_ "radio"
-            , name "size"
-            , onClick (ChangeSize size)
-            ]
-            []
+        [ input [ type_ "radio", name "size" ] []
         , text (sizeToString size)
         ]
 
@@ -75,34 +69,15 @@ sizeToString size =
             "large"
 
 
-type alias FileName =
-    String
-
-
-type alias Thumbnail =
-    { fileName : FileName }
+type alias Photo =
+    { url : String }
 
 
 type alias Model =
-    { thumbnails : List Thumbnail, selectedThumbnail : Thumbnail, chosenSize : ThumbnailSize }
-
-
-initialModel : Model
-initialModel =
-    { thumbnails =
-        [ { fileName = "1.jpeg" }
-        , { fileName = "2.jpeg" }
-        , { fileName = "3.jpeg" }
-        ]
-    , selectedThumbnail =
-        { fileName = "1.jpeg" }
-    , chosenSize = Medium
+    { photos : List Photo
+    , selectedUrl : String
+    , chosenSize : ThumbnailSize
     }
-
-
-thumbnailArray : Array Thumbnail
-thumbnailArray =
-    Array.fromList initialModel.thumbnails
 
 
 type ThumbnailSize
@@ -111,47 +86,52 @@ type ThumbnailSize
     | Large
 
 
-type Msg
-    = ClickedSurpriseMe
-    | ClickedThumbnail Thumbnail
-    | ChangeSize ThumbnailSize
-    | GotSelectedIndex Int
+initialModel : Model
+initialModel =
+    { photos =
+        [ { url = "1.jpeg" }
+        , { url = "2.jpeg" }
+        , { url = "3.jpeg" }
+        ]
+    , selectedUrl = "1.jpeg"
+    , chosenSize = Medium
+    }
+
+
+photoArray : Array Photo
+photoArray =
+    Array.fromList initialModel.photos
+
+
+getPhotoUrl : Int -> String
+getPhotoUrl index =
+    case Array.get index photoArray of
+        Just photo ->
+            photo.url
+
+        Nothing ->
+            ""
+
+
+randomPhotoPicker : Random.Generator Int
+randomPhotoPicker =
+    Random.int 0 (Array.length photoArray - 1)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ClickedSurpriseMe ->
-            ( model, Random.generate GotSelectedIndex randomPhotoPicker )
+        GotSelectedIndex index ->
+            ( { model | selectedUrl = getPhotoUrl index }, Cmd.none )
 
-        ClickedThumbnail thumb ->
-            ( { model | selectedThumbnail = thumb }, Cmd.none )
+        ClickedPhoto url ->
+            ( { model | selectedUrl = url }, Cmd.none )
 
-        ChangeSize size ->
+        ClickedSize size ->
             ( { model | chosenSize = size }, Cmd.none )
 
-        GotSelectedIndex index ->
-            ( { model | selectedThumbnail = getThumbnail index model.selectedThumbnail }, Cmd.none )
-
-
-getThumbnail : Int -> Thumbnail -> Thumbnail
-getThumbnail index defaultThumbnail =
-    let
-        maybeThumbnail =
-            Array.get index thumbnailArray
-    in
-    case maybeThumbnail of
-        Just thumb ->
-            thumb
-
-        Nothing ->
-            defaultThumbnail
-
-
-actions : { clickedThumbnailAction : Action }
-actions =
-    { clickedThumbnailAction = "wtf"
-    }
+        ClickedSurpriseMe ->
+            ( model, Random.generate GotSelectedIndex randomPhotoPicker )
 
 
 main : Program () Model Msg
